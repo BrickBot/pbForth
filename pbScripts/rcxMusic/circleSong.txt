@@ -1,0 +1,54 @@
+\ -----------------------------------------------------------------------------
+\ circleSong.txt - circle song for the RCX
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-05-20 - Original
+\ -----------------------------------------------------------------------------
+\ Thanks to Guido Truffelli <www.aga.it/~guy> for the inspiration and the
+\ sample data for this script.
+\
+\ This script assumes a song player like firstMusic.txt has been loaded onto
+\ the RCX.
+\ -----------------------------------------------------------------------------
+
+BASE @
+DECIMAL
+
+CREATE_SONG CIRCLE
+  25 294 NOTE,
+  13 247 NOTE,
+  25 220 NOTE,
+  25 196 NOTE,
+  25 220 NOTE,
+  25 247 NOTE,
+  50   0 NOTE,
+  13 220 NOTE,
+  25 294 NOTE,
+  13 247 NOTE,
+  25 220 NOTE,
+  25 196 NOTE,
+  25 220 NOTE,
+  50   0 NOTE,
+  25 247 NOTE,
+  13 262 NOTE,
+  13 262 NOTE,
+  13 247 NOTE,
+  25 262 NOTE,
+  25 247 NOTE,
+  25 262 NOTE,
+  25 247 NOTE,
+  25 196 NOTE,
+  13   0 NOTE,
+  25 196 NOTE,
+  13 262 NOTE,
+  13 262 NOTE,
+  13 247 NOTE,
+  25 262 NOTE,
+  25 247 NOTE,
+  25 196 NOTE,
+   0   0 NOTE,
+   
+BASE !
+
+\ -----------------------------------------------------------------------------

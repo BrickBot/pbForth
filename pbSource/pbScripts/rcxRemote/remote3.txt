@@ -1,0 +1,31 @@
+\ -----------------------------------------------------------------------------
+\ remote3.txt - Sends a message out the IR port that simulates the remote
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-07-06 - Original
+\ -----------------------------------------------------------------------------
+
+BASE @
+HEX
+
+: sendHeader
+  55 EMIT FF EMIT 00 EMIT ;
+
+: sendByte ( c -- )
+  DUP EMIT INVERT EMIT ;
+  
+\ The sendRemote word accepts a word that matches the button status
+\ of the remote. See the rcxRemote script tutorial at:
+\
+\ <http://www.hempeldesigngroup.com/lego/pbForth/scripts/howtoIRData.html>
+
+: sendRemote ( n -- )
+  sendHeader
+  D2 sendByte 
+  DUP 8 RSHIFT 2DUP sendByte sendByte
+  + D2 + sendByte ;
+
+BASE !
+
+\ -----------------------------------------------------------------------------

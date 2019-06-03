@@ -1,0 +1,134 @@
+\ -----------------------------------------------------------------------------
+\ srec.txt - definitions required for S-record formatting
+\
+\ This code is entirely due to the efforts of Sergey Udovenko. It is a
+\ wonderful example of the "factoring" that goes on when you program in
+\ Forth. You start with the basics and build on things that work until
+\ the job is done!
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   01-11-02 - Updated for use with new pbForth
+\                      - Eliminated wordlist manipulation
+\                        source submitted by Sergey Udovenko
+\ R. Hempel   99-12-12 - Converted to pbFORTH source format from original
+\                        source submitted by Sergey Udovenko
+\ -----------------------------------------------------------------------------
+
+BASE @ HEX
+
+\ These two words are used to store bytes and binary strings in S-Records.
+\ An interesting technique called "vectored execution" is used to separate
+\ the process of creating the actual records from how they are stored.
+\
+\ For this application, we can send out the S-Records data as it is generated,
+\ so the byte! word just sends the data out the serial port. It could be
+\ redefined to print to a buffer, for example.
+\
+\ Later on, the XMODEM protocol will be used to dump records, and we'll need
+\ to redefine this vector to make it work.
+
+' EMIT VALUE 'byte!    \ Vector for "EMIT" word
+
+: byte! ( b -- )       \ Send a byte of data to output
+  'byte! EXECUTE ;
+
+: data! ( addr n -- )  \ Send a string of bytes to output
+  0 DO 
+    DUP C@ byte! CHAR+ 
+  LOOP DROP ;
+
+\ Next we have words that generate various S-Record fields. The Forth
+\ "pictured formatting" words are used. Note that the pictured formatters
+\ work on double wide cells!
+\
+\ Also, the use of the "," character in the variable and function names
+\ make the intent that these words manipulate structure fields more clear.
+\ The use of "!" implies "store".
+\
+\ The observant reader will note that there is no base implied in the
+\ formatting strings. That's because Forth uses whatever the currently
+\ selected base is!
+
+VARIABLE srec.checksum
+
+: srec.type! ( type -- )
+  [CHAR] S byte! 
+  0 <# # #> data! ;
+
+: srec.count! ( data-size -- )
+  3 +                           \ address-size + checksum-size
+  DUP srec.checksum ! 
+  0 <# # # #> data! ;
+
+: srec.address! ( addr-n -- )
+  DUP FF AND OVER 8 RSHIFT + srec.checksum +!
+  0 <# # # # # #> data! ;
+
+: srec.data! ( data-addr data-size -- )
+  ?DUP IF 
+    0 DO 
+      DUP C@ DUP srec.checksum +! 
+      0 <# # # #> data! CHAR+
+    LOOP  
+  THEN DROP ;
+
+: srec.checksum! ( -- )
+  srec.checksum @ INVERT FF AND 
+  0 <# # # #> data! ;
+
+: srec.cr_lf! ( -- )
+  0D byte! 0A byte! ;
+
+\ Now that all of the individual S-Record field formatters are defined
+\ we can move to getting the records themselves formatted. A generic
+\ word that puts out any S-Record type is defined first, then the
+\ specific record type formatters can be written.
+
+: S-record! ( address data-addr data-size type -- )
+  srec.type!
+  DUP srec.count!
+  ROT srec.address!
+  srec.data!
+  srec.checksum! 
+  srec.cr_lf! ;
+  
+: S0-record! ( -- )
+  0 S" pbForth" 0 S-record! ;
+
+: S1-record! ( data-addr data-size -- )
+  OVER SWAP 1 S-record! ;
+
+: S9-record! ( address -- )
+  0 0 9 S-record! ;  
+
+\ Now that the S-Records can be printed individually, we need to add
+\ a few words to tie everyting together, including 
+\ s-record dump
+
+15 VALUE srec.data_size
+
+: srec-data-size ( begin-addr end-addr -- data-size )
+  SWAP - DUP srec.data_size > IF 
+    DROP srec.data_size 
+  THEN ;
+
+: srec-data! ( addr size -- )
+  OVER + DUP ROT DO
+    I OVER srec-data-size
+    I OVER S1-record!
+  +LOOP DROP ;
+
+: srec-dump ( addr size xt-emit -- )
+  'byte! >R TO 'byte!    \ set "emit" vector
+  BASE @ >R HEX          \ for <# .. #>
+  DUP IF
+    S0-record! 2DUP srec-data! OVER S9-record!
+  THEN 2DROP 
+  R> BASE !              \ Restore the old base
+  R> TO 'byte! ;         \ restore the old emit vector
+
+: SREC-DUMP ( addr size -- )
+  CR ['] EMIT srec-dump ;
+
+BASE !

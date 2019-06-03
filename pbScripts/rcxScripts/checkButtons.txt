@@ -1,0 +1,70 @@
+\ -----------------------------------------------------------------------------
+\ checkButtons.txt - return the debounced state of all the RCX buttons
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-05-17 - Added #include for testing
+\ R. Hempel   2002-04-16 - Original
+\ -----------------------------------------------------------------------------
+\ NOTE: This code assumes getButtons.txt has already been loaded...
+\
+\ The state of the switches has changed when two consecutive samples are the
+\ same and they are different than the last known stable state.
+\ -----------------------------------------------------------------------------
+
+\ #include getButtons.txt
+
+BASE @
+HEX
+
+\ The button event processing uses a typical ring-buffer. If empty, the head
+\ index is equal to the tail, if full, the head is one less than tail.
+
+CREATE b_buf                   \ A ring buffer with 8 bytes
+  8 ALLOT
+  
+0 VALUE b_head                 \ Indexes into the b_buf structure
+0 VALUE b_tail
+
+0 VALUE b_stable               \ The debounced state
+0 VALUE b_prev                 \ The previous scan
+
+\ Routines to put and get entries into buffer. NOTE the use of 8 as a magic
+\ number! By ANDing with 7 we get the MOD function to be very fast...
+
+: b_full? ( -- f )             \ Return non-zero if full 
+  b_head 1+ 7 AND b_tail = ;
+
+: b_put ( u -- )
+  b_head DUP 1+ 7 AND DUP
+  b_tail =                     \ Check if full
+  IF   2DROP DROP              \ If yes, ignore change              
+  ELSE TO b_head               \ If not, update head ptr
+       b_buf + C!              \   and store the item
+  THEN ;
+  
+: b_empty? ( -- u )
+  b_tail b_head = ;            \ Return non-zero for empty
+
+: b_get ( -- u )
+  b_tail DUP b_head =          \ Check if empty
+  IF   DROP 0                  \ If yes, return 0
+  ELSE DUP 1+ 7 AND TO b_tail  \ If not, update tail pointer
+       b_buf + C@              \   and get the item
+  THEN ;
+  
+: b_scan ( -- new chg )        \ Function to check for changed button
+  GET_BUTTONS                  \ Get a new scan
+  b_stable                     \ Get the last stable state and check equality
+  OVER XOR DUP                 \ Is new sample different than last stable state? 
+                               \ ( new chg f -- )
+  IF   OVER b_prev             \ If yes, check for stable change
+       XOR                     \   Determine change
+                               \ ( new chg f -- )
+       IF   DROP 0             \   If not stable, indicate no change
+       ELSE OVER TO b_stable   \   If stable, save as new stable state
+       THEN                    
+  THEN                         \ ( new chg -- )
+  OVER TO b_prev ;             \ Save this sample for next time
+
+\ -----------------------------------------------------------------------------

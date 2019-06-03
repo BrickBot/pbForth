@@ -1,0 +1,28 @@
+\ -----------------------------------------------------------------------------
+\ getButtons.txt - return the state of all the RCX buttons
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-04-16 - Original
+\ -----------------------------------------------------------------------------
+\
+\ The GET_BUTTONS word returns the state of the View, Prgm, and Run buttons
+\ in the lower three bits. The POWER_GET word returns the state of the On
+\ button as 0 if pressed. The logic after just sets the 4th bit high if the
+\ On button was pressed.
+\ -----------------------------------------------------------------------------
+
+BASE @
+HEX
+
+: GET_BUTTONS ( -- u )
+
+  RCX_BUTTON DUP      BUTTON_GET @
+  RCX_POWER  DUP 4000 POWER_GET  @
+  
+  0= IF 8 OR THEN  ;
+
+BASE !
+
+\ -----------------------------------------------------------------------------
+

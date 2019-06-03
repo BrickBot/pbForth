@@ -1,0 +1,56 @@
+\ -----------------------------------------------------------------------------
+\ music2.txt - background method of playing music on the RCX
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-05-20 - Original
+\ -----------------------------------------------------------------------------
+\ Thanks to Guido Truffelli <www.aga.it/~guy/lego> for the inspiration and
+\ the sample music file.
+\ -----------------------------------------------------------------------------
+
+BASE @
+DECIMAL
+
+0 VALUE NOTE_ADDR            \ The current address of the note we are playing
+
+: CREATE_SONG CREATE         \ Makes a new word in the dictionary.
+              DOES>          \ Returns the address of the memory following the entry
+              TO NOTE_ADDR ; \  and copies it to the NOTE_ADDR pointer
+
+: NOTE, ( time freq -- )     \ Compile a new (time,freq) pair into dictionary space
+  , C, ;                     \ Note that C, compiles a byte into the dictionary!
+
+: END_SONG 0 0 NOTE, ;       \ Compile a terminating entry into the dictionary space
+
+: NOTE@ ( addr -- time freq )  \ Get the (time,freq) pair we are pointing to
+  DUP CELL+ C@ \ Get the time
+  SWAP @ ;     \ Get the frequency
+
+: NEXT_NOTE ( addr -- naddr )  \ Point to the next note
+  [ 1 CHARS 1 CELLS + ] LITERAL + ;
+
+\ This version is ready to play songs in the background. Instead of spinning around
+\ to check if a note has finished, it checks once and if there is no note playing moves
+\ on to the next note.
+
+: PLAY_SONG (  -- )
+  RCX_SOUND DUP SOUND_GET @ 0=     \ Check if a note is NOT playing
+  IF   NOTE_ADDR DUP NOTE@         \ Get the next note
+                                   \ Stack: ( addr time freq -- )
+       OVER                        \ Check the time
+       IF   SOUND_TONE             \ If not zero, play the note
+            NEXT_NOTE TO NOTE_ADDR \   and advance to the next note...
+       ELSE DROP 2DROP             \ Otherwise, just clean up the stack
+       THEN  
+  THEN ;
+
+\ The following line was uncommented after extensive testing of PLAY_SONG
+\ from the command line...
+
+' PLAY_SONG TO 'UserISR
+
+BASE !
+
+\ -----------------------------------------------------------------------------
+

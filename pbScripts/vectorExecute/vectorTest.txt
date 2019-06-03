@@ -1,0 +1,26 @@
+\ -----------------------------------------------------------------------------
+\ vectorTest.txt - illustration of Vectored Execution
+\
+\ This example is taken from Leo Brodie's "Starting Forth"
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-04-12 - Original
+\ -----------------------------------------------------------------------------
+
+: HELLO   ." Hello " ;
+: GOODBYE ." Goodbye " ;
+
+0 VALUE 'ALOHA
+
+: ALOHA 'ALOHA EXECUTE ;
+
+' HELLO TO 'ALOHA
+
+ALOHA
+
+' GOODBYE TO 'ALOHA
+
+ALOHA
+
+\ -----------------------------------------------------------------------------

@@ -1,0 +1,23 @@
+\ -----------------------------------------------------------------------------
+\ h8300/splitWord1.txt - split the word on top of stack into bytes
+\
+\ Requires: nothing
+\
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-04-25 - Original
+\ -----------------------------------------------------------------------------
+
+BASE @
+HEX
+
+: SPLIT-WORD ( u -- lsb msb )
+  DUP FF AND SWAP    \  ( -- lsb u   ) Isolate the lsb
+  8 RSHIFT ;         \  ( -- lsb msb ) Isolate the msb
+
+: TEST 0 DO I SPLIT-WORD 2DROP LOOP ;
+
+BASE !  
+
+\ -----------------------------------------------------------------------------

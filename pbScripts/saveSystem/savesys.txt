@@ -1,0 +1,37 @@
+\ -----------------------------------------------------------------------------
+\ save-sys.txt - definitions for saving a system image
+\
+\ This code is entirely due to the efforts of Sergey Udovenko. I have tried
+\ to reformat it and will add comments someday...
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   05-29-02 - SAVE-SYSTEM was mising a quote at " All Done!"
+\ R. Hempel   01-11-02 - Updated for use with new pbForth
+\                      - Eliminated wordlist manipulation
+\                        source submitted by Sergey Udovenko
+\ R. Hempel   99-12-12 - Converted to pbFORTH source format
+\                      - Added SAVE-SYSTEM-ONLY check out the comments!
+\ -----------------------------------------------------------------------------
+
+BASE @ HEX
+
+: X-SEND-SREC ( addr size -- )
+  x-begin 
+  ['] x-transmit-byte srec-dump 
+  x-end ;
+
+: SAVE-SYSTEM ( -- )
+  CR ." Saving image..."
+  CR ." (Press 'RUN' to abort)"
+  8000 HERE OVER - X-SEND-SREC
+  CR ." All Done!" ;
+
+\ The SAVE-SYSTEM-ONLY word depends on having the "end-of-image" word defined
+\ using MARKER at the  point which you want to save the system to. Don't
+\ uncomment this unless you know what you are doing!
+
+\ : SAVE-SYSTEM-ONLY ( -- )
+\  end-of-image SAVE-SYSTEM ;
+
+BASE !

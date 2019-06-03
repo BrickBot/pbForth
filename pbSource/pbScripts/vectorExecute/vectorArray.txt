@@ -1,0 +1,37 @@
+\ -----------------------------------------------------------------------------
+\ vectorArray.txt - a simple array of execution vectors
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-04-12 - Original
+\ -----------------------------------------------------------------------------
+
+BASE @
+DECIMAL
+
+CREATE vector_array                     \ Private array of 10 ptrs to NoOp
+  ' NoOp DUP , DUP , DUP , DUP , DUP ,
+         DUP , DUP , DUP , DUP , ,
+
+0 VALUE vector_idx                      \ Private counter
+
+: VECTOR_PUT ( xt idx -- )              \ Put xt into array
+  CELLS vector_array + ! ;
+  
+: VECTOR_GET ( idx -- xt )              \ Get xt from array
+  CELLS vector_array + @ ;
+
+: VECTOR_EXECUTE ( -- )
+  vector_idx VECTOR_GET EXECUTE ;
+  
+: VECTOR_DISPLAY ( -- )
+  0 vector_idx 12311 LCD_NUMBER LCD_REFRESH ;
+
+: VECTOR_NEXT ( -- )
+  vector_idx 1+ 10 MOD
+  TO vector_idx
+  VECTOR_DISPLAY ;
+   
+BASE !  
+
+\ -----------------------------------------------------------------------------

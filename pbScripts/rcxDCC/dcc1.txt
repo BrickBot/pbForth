@@ -1,0 +1,62 @@
+\ -----------------------------------------------------------------------------
+\ dcc1.txt - first pass at DCC control for RCX
+\
+\ Requires:
+\
+\ This just contains the basics to get started with DCC on the RCX.
+\ Use this file with the text in "How to Use DCC with pbForth"
+\
+\ http://www.hempeldesigngroup.com/lego/pbForth
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2003-12-26 - Original
+\ -----------------------------------------------------------------------------
+
+\ Fetch the current BASE and leave it on the stack and switch to HEX
+
+BASE @
+HEX
+
+\ Create a place to store DCC messages. The messages can be
+\ up to 5 bytes long, so allocate that many chars
+
+CREATE DCC_PACKET 5 CHARS ALLOT
+
+\ Now make some constants that will be used to control
+\ engine 0
+
+0000 CONSTANT DCC_STOP
+
+0048 CONSTANT DCC_REV_MIN 
+004C CONSTANT DCC_REV_MED
+004F CONSTANT DCC_REV_MAX
+
+0068 CONSTANT DCC_FWD_MIN
+006C CONSTANT DCC_FWD_MED
+006F CONSTANT DCC_FWD_MAX
+
+\ Make a simple word that sends the desired packet
+\ out the DCC port exactly once.
+
+: DCC_ISR  DCC_BUSY? IF ELSE DCC_PACKET 2 DCC_SEND THEN ;
+
+\ Remember to set the port for the DCC driver
+
+0 DCC_SETPORT
+
+\ Then set DCC_ISR to run once every timer tick
+
+' DCC_ISR TO 'UserISR
+
+\ Here's a helper word that sets the speed to the desired
+\ value
+
+: SET_SPEED ( value -- )
+  DCC_PACKET ! ;
+
+\ Restore the old BASE value
+
+BASE !  
+
+\ -----------------------------------------------------------------------------

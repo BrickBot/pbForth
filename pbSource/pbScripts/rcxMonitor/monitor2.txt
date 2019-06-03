@@ -1,0 +1,65 @@
+\ -----------------------------------------------------------------------------
+\ monitor2.txt - second pass at RCX keypad monitor
+\
+\ Requires: rcxScripts/checkButtons.txt
+\           rcxScripts/getButtons.txt
+\           vectorExecute/vectorArray.txt
+\
+\ This routine just loks for the Prgm switch to change state to pressed, and
+\ then it calls VECTOR_NEXT. If the Run switch is pressed, it calls
+\ VECTOR_EXECUTE.
+\
+\ The mask for the Prgm button is 0x04
+\ The mask for the Run  button is 0x01
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-04-20 - Original
+\ -----------------------------------------------------------------------------
+
+BASE @
+DECIMAL
+
+: MONITOR2 ( -- )
+  b_scan 2DUP            \ Make a copy for both tests...
+  
+  4 AND                  \ Did the Prgm button change state?
+  IF   4 AND             \ Is it pressed?
+       IF VECTOR_NEXT    \ If so, increment the vector index
+       THEN
+  ELSE DROP
+  THEN
+  
+  1 AND                  \ Did the Run button change state?
+  IF   1 AND             \ Is it pressed?
+       IF VECTOR_EXECUTE \ If so, run the vector
+       THEN
+  ELSE DROP
+  THEN ;  
+
+' MONITOR2 TO 'UserIdle
+
+\ Add a few simple test words to make sure it all works. The test words
+\ just make different system sounds...
+
+HEX
+
+: SOUND0 0 4003 SOUND_PLAY ;
+: SOUND1 1 4003 SOUND_PLAY ;
+: SOUND2 2 4003 SOUND_PLAY ;
+: SOUND3 3 4003 SOUND_PLAY ;
+: SOUND4 4 4003 SOUND_PLAY ;
+: SOUND5 5 4003 SOUND_PLAY ;
+: SOUND6 6 4003 SOUND_PLAY ;
+
+' SOUND0 0 VECTOR_PUT
+' SOUND1 1 VECTOR_PUT
+' SOUND2 2 VECTOR_PUT
+' SOUND3 3 VECTOR_PUT
+' SOUND4 4 VECTOR_PUT
+' SOUND5 5 VECTOR_PUT
+' SOUND6 6 VECTOR_PUT
+
+BASE !  
+
+\ -----------------------------------------------------------------------------

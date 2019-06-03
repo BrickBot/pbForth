@@ -1,0 +1,182 @@
+
+\ pbFORTH Test Script
+
+PBTEST         \ Erase previous test script if any
+
+MARKER PBTEST  \ Make a marker so we can erase later
+
+HEX            \ Hex makes life easier!
+
+: DELAY 800 0 DO I DROP LOOP ;
+
+\ Displays a bunch of different LCD segments and numbers
+
+: TEST_LCD
+  LCD_CLEAR LCD_REFRESH
+
+  3021 3000 DO
+    I LCD_SHOW LCD_REFRESH DELAY
+    I LCD_HIDE LCD_REFRESH DELAY
+  LOOP
+
+  LCD_CLEAR LCD_REFRESH
+
+  A 0 DO
+       0 I 3017 LCD_NUMBER LCD_REFRESH DELAY
+    3002 I 3001 LCD_NUMBER LCD_REFRESH DELAY
+    3002 I 301F LCD_NUMBER LCD_REFRESH DELAY
+    3003 I 3001 LCD_NUMBER LCD_REFRESH DELAY
+    3003 I 301F LCD_NUMBER LCD_REFRESH DELAY
+    3004 I 3001 LCD_NUMBER LCD_REFRESH DELAY
+    3004 I 301F LCD_NUMBER LCD_REFRESH DELAY
+    3005 I 3001 LCD_NUMBER LCD_REFRESH DELAY
+    3005 I 301F LCD_NUMBER LCD_REFRESH DELAY
+  LOOP
+
+  LCD_CLEAR LCD_REFRESH
+ ;
+
+\ Sounds all of the different system sounds
+
+: TEST_SOUND
+\  RCX_INIT
+
+  7 0 DO              \ Unqueued sounds, wait on each one
+    I 4003 SOUND_PLAY
+    BEGIN RCX_SOUND DUP SOUND_GET @ 0= UNTIL
+  LOOP
+
+  7 0 DO              \ Queued sounds, wait till done
+    I 4004 SOUND_PLAY
+  LOOP
+
+  BEGIN RCX_SOUND DUP SOUND_GET @ 0= UNTIL
+;
+
+\ Tests all of the buttons - displays codes on LCD as you press buttons until
+\ you send a character to the RCX
+
+: TEST_BUTTON
+\ BUTTON_INIT
+
+  BEGIN
+    RCX_BUTTON DUP BUTTON_GET @
+    3002 SWAP 301F LCD_NUMBER LCD_REFRESH
+    EKEY?
+  UNTIL 
+
+  LCD_CLEAR LCD_REFRESH
+;
+
+\ Tests the power on/off switch and code, displays raw battery reading and
+\ increments the program counter (mod 10) until you send a character to the RCX
+
+: TEST_POWER
+
+  0                                           \ Here's the counter
+  BEGIN
+\    RCX_INIT
+\    POWER_INIT
+    DELAY
+
+    0 OVER 3017 LCD_NUMBER                    \ Display it - refresh later
+    RCX_POWER DUP 4001 POWER_GET @            \ Raw battery value
+    3002 SWAP 301F LCD_NUMBER LCD_REFRESH
+
+    0 BEGIN                                   \ Spin waiting for press
+      RCX_POWER DUP 4000 POWER_GET @          \ Check power button
+      IF DROP 0 ELSE 1+ THEN DUP 10 =
+    UNTIL DROP
+    
+
+\   LCD_CLEAR LCD_REFRESH
+
+    POWER_OFF
+
+    0 BEGIN                                   \ Spin waiting for release
+      RCX_POWER DUP 4000 POWER_GET @ 0=       \ Check power button
+      IF DROP 0 ELSE 1+ THEN DUP 10 =
+    UNTIL DROP
+
+    1+ DUP 5 =                                \ Counter mod Ahex=10decimal
+  UNTIL
+
+  LCD_CLEAR LCD_REFRESH
+;
+
+\ Tests the low resolution timers specified by idx 0 to 3
+
+: TEST_TIMER ( idx -- )
+
+  0 OVER TIMER_SET       \ Initialize to 0
+  0 OVER 3017 LCD_NUMBER \ Display idx - refresh later
+
+  1000 0 DO
+    DUP TIMER_GET 
+    3002 SWAP 301F LCD_NUMBER LCD_REFRESH
+  LOOP
+
+  LCD_CLEAR LCD_REFRESH
+;
+
+\ Tests the high resolution timers specified by idx 0 to 9
+
+: TEST_timer ( idx -- )
+
+  200 OVER timer_SET     \ Initialize to 512 (5.1 Sec)
+  0 OVER 3017 LCD_NUMBER \ Display idx - refresh later
+
+  BEGIN
+    DUP timer_GET DUP
+    3002 SWAP 301F LCD_NUMBER LCD_REFRESH
+    0=
+  UNTIL
+
+  LCD_CLEAR LCD_REFRESH
+;
+
+\ Tests the passive sensor code for 5 seconds - PB in counting mode
+
+: TEST_PASSIVE_SENSOR ( idx -- )
+
+  RCX_INIT
+\  SENSOR_INIT
+
+  DUP SENSOR_CLEAR
+  40 OVER SENSOR_MODE
+  1  OVER SENSOR_TYPE
+
+  200 0 timer_SET     \ Initialize to 512 (5.1 Sec)
+
+  BEGIN
+    DUP SENSOR_READ DROP
+    0    OVER SENSOR_BOOL  3017 LCD_NUMBER
+    3002 OVER SENSOR_VALUE 301F LCD_NUMBER LCD_REFRESH
+    0 timer_GET 0=
+  UNTIL DROP
+
+  LCD_CLEAR LCD_REFRESH
+;
+
+\ Tests the active sensor code for 5 seconds - Light in RAW mode
+
+: TEST_ACTIVE_SENSOR ( idx -- )
+
+\  RCX_INIT
+\  SENSOR_INIT
+
+  DUP SENSOR_CLEAR
+  80 OVER SENSOR_MODE
+  3  OVER SENSOR_TYPE
+
+  200 0 timer_SET     \ Initialize to 512 (5.1 Sec)
+
+  BEGIN
+    DUP SENSOR_READ DROP
+    0    OVER SENSOR_VALUE A /  3017 LCD_NUMBER
+    3002 OVER SENSOR_RAW        301F LCD_NUMBER LCD_REFRESH
+    0 timer_GET 0=
+  UNTIL DROP
+
+  LCD_CLEAR LCD_REFRESH
+;

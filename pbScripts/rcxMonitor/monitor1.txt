@@ -1,0 +1,31 @@
+\ -----------------------------------------------------------------------------
+\ monitor1.txt - first pass at RCX keypad monitor
+\
+\ Requires: rcxScripts/checkButtons.txt
+\           rcxScripts/getButtons.txt
+\           vectorExecute/vectorArray.txt
+\
+\ This routine just loks for the Prgm switch to change state to pressed, and
+\ then it calls VECTOR_NEXT. The mask for the Prgm button is 0x04
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-04-20 - Original
+\ -----------------------------------------------------------------------------
+
+BASE @
+DECIMAL
+
+: MONITOR1 ( -- )
+  b_scan 4 AND        \ Did the Prgm button change state?
+  IF   4 AND          \ Is it pressed?
+       IF VECTOR_NEXT \ If so, increment the vetor index
+       THEN
+  ELSE DROP
+  THEN ;  
+
+' MONITOR1 TO 'UserIdle
+
+BASE !  
+
+\ -----------------------------------------------------------------------------

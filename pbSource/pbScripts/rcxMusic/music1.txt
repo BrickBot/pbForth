@@ -1,0 +1,56 @@
+\ -----------------------------------------------------------------------------
+\ music1.txt - simple method of playing music on the RCX
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-05-20 - Original
+\ -----------------------------------------------------------------------------
+\ Thanks to Guido Truffelli <www.aga.it/~guy/lego> for the inspiration and
+\ the sample music file.
+\
+\ The SOUND_TONE word can be used to play arbitrary tones on the RCX
+\ speaker. This script shows how to set up a simple data structure to
+\ handle playing the tones.
+\
+\ New dictionary entries:
+\
+\ CREATE_SONG songname      Creates a new song called "songname"
+\ NOTE, ( time freq -- )    Adds a new note to the song
+\ END_SONG ( -- )           Adds a terminating entry to the song
+\ songname PLAY_SONG        Plays "songname"
+\ -----------------------------------------------------------------------------
+
+BASE @
+DECIMAL
+
+: CREATE_SONG CREATE ;     \ Makes a new word in the dictionary. Returns the
+                           \ address of the memory following the entry.
+
+: NOTE, ( time freq -- )   \ Compile a new (time,freq) pair into dictionary space
+  , , ;
+
+: END_SONG 0 0 NOTE, ;     \ Compile a terminating entry into the dictionary space
+
+: NOTE@ ( addr -- time freq )  \ Get the (time,freq) pair we are pointing to
+  DUP CELL+ @  \ Get the time
+  SWAP @ ;     \ Get the frequency
+
+: NEXT_NOTE ( addr -- naddr )  \ Point to the next note
+  [ 2 CELLS ] LITERAL + ;
+
+: PLAY_SONG ( addr -- )
+  BEGIN
+    DUP NEXT_NOTE    \ Point to the next entry in the song      
+    SWAP NOTE@       \ Get the entry
+    OVER             \ Check the time
+   WHILE             \ If non-zero, then proceed
+    SOUND_TONE       \ Sound the tone and spin
+    BEGIN                         
+      RCX_SOUND DUP SOUND_GET @ 0=
+    UNTIL
+  REPEAT ;
+  
+BASE !
+
+\ -----------------------------------------------------------------------------
+

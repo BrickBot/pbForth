@@ -1,0 +1,66 @@
+\ -----------------------------------------------------------------------------
+\ remote2.txt - looks for complemented bytes in the IR stream
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-07-06 - Original
+\ -----------------------------------------------------------------------------
+\ Advances the byte state one level for every character match
+\
+\ byteState Event               Action
+\      0    waiting for byte    set byteState to 1 
+\      1    waiting for ~byte   set byteState to 2
+\
+\ Returns 0 if no byte has been found yet, non-0 if a byte is completed
+\ -----------------------------------------------------------------------------
+
+BASE @
+HEX
+
+0 VALUE byteState
+0 VALUE byte
+
+CREATE irMessage 8 ALLOT
+
+: getByte
+  EKEY?                                       \ Check for IR character
+  IF   EKEY                                   \ If there is one, get it 
+
+    byteState 0 =
+    IF   TO byte   1 TO byteState
+    ELSE
+    
+    byteState 1 =
+    IF   byte INVERT FF AND =
+         IF   2 TO byteState
+         ELSE 0 TO byteState
+         THEN
+                         
+    THEN THEN
+
+  THEN
+  
+  2 byteState = ; 
+  
+DECIMAL
+  
+: TEST
+  500 0 timer_SET
+    
+  0 TO headerState
+  BEGIN getHeader 0 timer_GET  0= OR
+  UNTIL 
+
+  4 0 DO
+    0 TO byteState
+    BEGIN getByte 0 timer_GET  0= OR
+    UNTIL byte irMessage I + C!
+  LOOP
+
+  2 byteState = IF 400 ELSE 100 THEN 10 SWAP SOUND_TONE ;
+
+: irMessage. 4 0 DO irMessage I + C@ U. LOOP ;
+
+BASE !
+
+\ -----------------------------------------------------------------------------

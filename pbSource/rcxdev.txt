@@ -1,0 +1,43 @@
+;------------------------------------------------------------------------------
+; rcxdev.txt - Notes on RCX development tools and techniques
+;
+; Revision History
+;
+; R. Hempel 00-04-20 - Original for rcxdev
+;------------------------------------------------------------------------------
+
+This document is where I'm collecting notes on developing software
+for the LEGO Mindstorms RCX Brick.
+
+BIN DIRECTORY
+
+The bin directory that ships with the source for pbForth is
+empty to save space. It should contain:
+
+bin/cygwin:
+  ar.exe
+  cygwin1.dll
+  date.exe
+  echo.exe
+  gzip.exe
+  h8300-hms
+  m4.exe
+  make.exe
+  mkdir.exe
+  rm.exe
+  sh.exe
+  tar.exe
+  touch.exe
+  tr.exe
+
+bin/cygwin/h8300-hms:
+  h8300-hms-as.exe
+  h8300-hms-ld.exe
+  h8300-hms-objcopy.exe
+  h8300-hms-objdump.exe
+
+bin/pkzip:
+  PKZIP25.EXE
+ 
+bin/rcxtools:
+  firmdl3.exe

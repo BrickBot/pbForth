@@ -1,0 +1,428 @@
+\ -----------------------------------------------------------------------------
+\ h8300/assembler.txt - H8/300 Assembler in Forth
+\
+\ This code is entirely due to the efforts of Darin Johnson  All I did
+\ was reformat the header to be like the other scripts in this archive.
+\
+\ Darin Johnson, Copyright (c) 2002.
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-04-25 - Reformat header
+\                        - Add reference to 'next
+\                        - Use lower case for register names
+\ D. Johnson  2002-03-06 - Original
+\ -----------------------------------------------------------------------------
+\ Changes for use with pbForth:
+\ - remove vocabularies
+\ - change # to ## for immediate mode
+\ - change defer'd definitions to normal colon definitions
+\ - add these definitions here
+\ -----------------------------------------------------------------------------
+
+: NIP   SWAP DROP ;
+
+0 CONSTANT CASE   IMMEDIATE
+: OF    POSTPONE OVER POSTPONE = POSTPONE IF POSTPONE DROP ;  IMMEDIATE
+: ENDOF POSTPONE ELSE ;  IMMEDIATE
+: ENDCASE
+    POSTPONE DROP
+    BEGIN ?DUP WHILE
+        POSTPONE THEN
+    REPEAT
+;  IMMEDIATE
+
+\ ======== Assembler notation ========
+\
+\ Addressing modes
+\ Hitachi format      Forth format
+\ ---------------------
+\ Rn                  Rn
+\ @Rn                 Rn )       or  0 @Rn
+\ @(d,Rn)             d Rn )@    or  d @Rn
+\ @Rn+                Rn @+
+\ @-Rn                Rn -@
+\ @aa                 aa ()
+\ #xx                 xx ##
+\ @(d,PC)             unused
+\ @@aa:8              aa @@   (only used by JMP/JSR)
+\
+\ No need to specify :8 or :16 after anything, the size
+\ is figured out from the registers present.
+\
+\ There is no explicit @aa:8 addressing mode.  Instead provide
+\ 16-bit value an the assembler will optimize the instruction.
+\ Ie, use "FFC0 ()" instead of "@C0:8".
+\
+\ A subset of assembler instructions are provided, no
+\ bit or CCR instructions yet.
+\
+\ Forth style conditionals used.
+\
+\ Examples of code:
+\ Hitachi format         Forth format
+\ ----------------------------------
+\ 1: CMP.W  R0,R1        BEGIN,  R0 R1 CMP,
+\    BEQ    2f           NE WHILE,
+\    MOV.B  @R0+,R3L         R0 @+ R3L MOV,
+\    MOV.B  R3L,@R2          R3L R2 ) MOV,
+\    ADDS   #1,R2            1 ## R2 ADDS,
+\    BRA    1b           REPEAT,
+\ 2: RTS                 RTS,
+
+\ ======== Bookkeeping ========
+
+BASE @
+
+: [ASSEMBLER]  ;  \ noop in pbforth
+: [HIDDEN]     ;
+
+\ Deferred definitions that allow assembling in system or cross-compiler
+
+[ASSEMBLER]
+
+\ defer AHERE   ' HERE is ahere
+\ defer 8,      ' C,   is 8,
+\ defer 8@      ' C@   is 8@
+\ defer 8!      ' C!   is 8!
+
+: AHERE HERE ;
+: 8,    C, ;
+: 8@    C@ ;
+: 8!    C! ;
+
+: 16,   DUP 8 RSHIFT 8, 8, ;  \ store in big-endian byte order
+    
+HEX
+
+\ ======== Registers and modes ========
+
+[HIDDEN]
+
+VARIABLE opval
+
+1000 CONSTANT reg
+1100 CONSTANT reg8
+1200 CONSTANT reg16
+2000 CONSTANT reg@
+3000 CONSTANT reg@d
+4000 CONSTANT reg@+
+5000 CONSTANT reg@-
+6000 CONSTANT #imm
+7000 CONSTANT @aa
+8000 CONSTANT @@aa
+
+\  word?  returns boolean
+\  ?word  checks condition and aborts
+
+: mode      F000 AND ;
+: modesz    FF00 AND ;
+: regnum    000F AND ;
+: op?       OVER modesz = ;  \ match mode and size
+: reg?      DUP mode reg = ;
+: ?reg      reg? 0= ABORT" Expected register" ;
+: ?reg16    reg16 op? 0= ABORT" Expected word register" ;
+: ?reg8     reg8 op? 0= ABORT" Expected byte register" ;
+: setmode   SWAP 00FF AND OR ;  \ change mode of operand
+
+: regi:
+    CREATE C,
+DOES>
+    C@ SWAP ?DUP IF
+        opval ! reg@d
+    ELSE
+        reg@
+    THEN setmode ;
+
+[ASSEMBLER]
+
+0 reg16 OR CONSTANT r0
+1 reg16 OR CONSTANT r1
+2 reg16 OR CONSTANT r2
+3 reg16 OR CONSTANT r3
+4 reg16 OR CONSTANT r4
+5 reg16 OR CONSTANT r5
+6 reg16 OR CONSTANT r6
+7 reg16 OR CONSTANT r7
+
+0 reg8 OR CONSTANT r0h    8 reg8 OR CONSTANT r0l
+1 reg8 OR CONSTANT r1h    9 reg8 OR CONSTANT r1l
+2 reg8 OR CONSTANT r2h    A reg8 OR CONSTANT r2l
+3 reg8 OR CONSTANT r3h    B reg8 OR CONSTANT r3l
+4 reg8 OR CONSTANT r4h    C reg8 OR CONSTANT r4l
+5 reg8 OR CONSTANT r5h    D reg8 OR CONSTANT r5l
+6 reg8 OR CONSTANT r6h    E reg8 OR CONSTANT r6l
+7 reg8 OR CONSTANT r7h    F reg8 OR CONSTANT r7l
+
+\ shortcuts for using ) or )@
+0 regi: @r0   1 regi: @r1   2 regi: @r2   3 regi: @r3
+4 regi: @r4   5 regi: @r5   6 regi: @r6   7 regi: @r7
+
+ \ Modifiers
+: )   ?reg16 reg@ setmode ;                \ register indirect
+: )@  ?reg16 reg@d setmode SWAP opval ! ;  \ register indirect with displacement
+: @+  ?reg16 reg@+ setmode ;               \ post-increment
+: -@  ?reg16 reg@- setmode ;               \ pre-decrement
+: ##  opval ! #imm ;                       \ immediate
+
+: ()                                       \ memory
+    DUP 100 U< IF ." Warning: 8-bit memory address incorrect?" THEN
+    opval ! @aa ;                        \ memory
+: @@                                       \ memory indirect (vectored)
+    DUP FF U> ABORT" Operand too large for @@ mode"
+    opval ! @@aa ;
+
+\ ======== Instruction building utilities ========
+
+[HIDDEN]
+
+: rr,     ( reg reg -- )    regnum SWAP 4 LSHIFT OR 8, ;
+: op/r,   ( opc reg -- )    regnum OR 8, ;
+
+: ops,    ( reg opc -- reg )  \  compile opcode, setting low bit for word size
+    OVER modesz reg16 = 1 AND OR 8, ;
+
+: ?sizes ( op op -- )    \ see if sizes of 2 operands agree
+    reg? IF
+        OVER reg? NIP IF
+            2DUP modesz SWAP modesz <> ABORT" Register size mismatch"
+        THEN
+    THEN ;
+
+: bval,  ( op -- )  \ store byte value (immediate, addr, or disp)
+    DROP opval @
+    DUP 100 -80 WITHIN ABORT" Byte value is too large"
+    8, ;
+
+
+: wval, ( op -- )
+    DROP opval @ 16, ;  \ add range test?
+
+: ?pair  <> ABORT" Unmatched conditionals" ;
+: ?disp  DUP 81 -7E WITHIN ABORT" Branch out of range" ;  ( range is -126:128)
+
+\ ======== Instructions ========
+
+\ zero operand instructions
+: ez:
+    CREATE SWAP C, C,
+DOES>
+    ( opcode1 opcode2 )
+    COUNT 8, C@ 8, ;
+
+[ASSEMBLER]
+
+00 00 ez: NOP,
+56 70 ez: RTE,
+54 70 ez: RTS,
+01 80 ez: SLEEP,   ( needed?)
+
+[HIDDEN]
+
+\ instructions that take a single byte register operand
+: 1reg:
+    CREATE SWAP C, C,
+DOES>
+    ( opcode flag/reg )
+    COUNT 8, C@ SWAP ?reg8 rr, ;
+
+[ASSEMBLER]
+
+0A 0 1reg: INC,
+1A 0 1reg: DEC,
+17 8 1reg: NEG,
+17 0 1reg: NOT,
+12 0 1reg: ROTXL,
+12 8 1reg: ROTL,
+13 0 1reg: ROTXR,
+13 8 1reg: ROTR,
+10 0 1reg: SHLL,
+10 8 1reg: SHAL,
+11 0 1reg: SHLR,
+11 8 1reg: SHAR,
+
+[HIDDEN]
+
+: adds:
+    CREATE C,
+DOES>
+    ( opcode flag/reg )
+    C@ 8,
+    ?reg16 SWAP #imm op? 0= ABORT" Expected immediate operand"
+    DROP opval @ DUP 2 U> ABORT" Immediate operand must be 1 or 2"
+    1- 8 * SWAP rr, ;
+
+[ASSEMBLER]
+
+0B adds: ADDS,
+1B adds: SUBS,
+
+[HIDDEN]
+
+: ari:
+    CREATE C, C, C,
+DOES>
+    >R
+    OVER #imm op? NIP IF   \ #imm,r8
+        ( opc/reg imm )
+        ?reg8
+        R> C@ DUP 0= ABORT" Can't use immediate operand"
+        SWAP op/r, bval,
+    ELSE
+        ?reg SWAP ?reg SWAP ?sizes  \ validate reg,reg
+        reg16 op? IF  \ r16,r16
+            ( opc rs/rd )
+            R> CHAR+ C@ DUP 0= ABORT" Can't use word register"
+            8, rr,
+        ELSE          \ r8,r8
+            ( opc rs/rd )
+            R> CHAR+ CHAR+ C@ 8, rr,
+        THEN
+    THEN ;
+
+[ASSEMBLER]
+
+\ 3 values are opcode for reg:8, reg:16, imm:8
+\ zero means that mode is not allowed
+08 09 80 ari: ADD,
+18 19 00 ari: SUB,
+0E 00 90 ari: ADDX,
+1E 00 B0 ari: SUBX,
+1C 1D A0 ari: CMP,
+16 00 E0 ari: AND,
+14 00 C0 ari: OR,
+15 00 D0 ari: XOR,
+
+[HIDDEN]
+
+: xu:
+    CREATE C,
+DOES>
+    C@ 8, ?reg16 SWAP ?reg8 SWAP rr, ;
+
+[ASSEMBLER]
+
+50 xu: MULXU,
+51 xu: DIVXU,
+
+[HIDDEN]
+
+: ?r7chk  ( @reg+ reg )
+    OVER 7 AND 7 = IF
+        reg8 op? ABORT" Byte size inc/dec of stack pointer!"
+    THEN ;
+
+: @aa:8?
+    \ see if shorter @aa:8 form can be used
+    reg8 op? IF  FF00 DUP opval @ AND = IF
+        opval @ FF AND opval !
+        TRUE EXIT
+    THEN THEN FALSE ;
+
+[ASSEMBLER]
+
+: MOV,
+    \ swap if necessary so register is second operand
+    reg? IF
+        OVER reg@- op? NIP ABORT" Invalid MOV source"
+    ELSE
+        #imm op? OVER reg@+ op? NIP OR ABORT" Invalid MOV destination"
+        reg@- op? IF reg@+ setmode THEN
+        8 OR \ flag it as swapped (8 does the right thing for most modes)
+        SWAP ?reg
+    THEN
+
+    OVER mode CASE
+        reg   OF  ?sizes 0C ops, rr,      ENDOF
+        reg@  OF  68 ops, rr,             ENDOF
+        reg@d OF  6E ops, rr, #imm wval,  ENDOF
+        reg@+ OF  ?r7chk 6C ops, rr,      ENDOF
+        #imm  OF
+            reg8 op? IF
+                F0 SWAP op/r, bval,
+            ELSE
+                79 8, 0 SWAP rr, wval,
+            THEN
+        ENDOF
+        @aa   OF
+            @aa:8? IF
+                OVER regnum IF 30 ELSE 20 THEN
+                SWAP op/r, bval,
+            ELSE
+                6A ops, rr, #imm wval,
+            THEN
+        ENDOF
+        TRUE ABORT" Invalid addressing mode"
+    ENDCASE ;
+
+: PUSH,   ?reg16 r7 -@ MOV, ;
+: POP,    ?reg16 r7 @+ SWAP MOV, ;
+
+[HIDDEN]
+
+: jmp:
+    CREATE C,
+DOES>
+    C@ OVER mode CASE
+        reg@ OF  8, 0 rr,          ENDOF
+        @aa  OF  1+ 8, 0 8, wval,  ENDOF
+        @@aa OF  1+ 1+ 8, bval,    ENDOF
+        TRUE ABORT" Invalid mode for JMP/JSR"
+    ENDCASE ;
+
+: bra:
+    CREATE C,
+DOES>
+    C@ 8, AHERE 1+ - ?disp 8, ;
+
+[ASSEMBLER]
+
+59 jmp: JMP,
+5D jmp: JSR,
+
+\ These take plain address as agument with no () modification
+40 bra: BRA,
+55 bra: BSR,
+
+\ ======== Structured conditionals ========
+
+\ condition codes  (low bit toggled to invert the test)
+
+40 CONSTANT NV
+
+43 CONSTANT HI                  \ x > y   (unsigned)
+42 CONSTANT LS                  \ x <= y    ""
+45 CONSTANT CC  45 CONSTANT HS  \ x >= y    ""
+44 CONSTANT CS  44 CONSTANT LO  \ x < y     ""
+47 CONSTANT NE                  \ x <> y
+46 CONSTANT EQ                  \ x == y
+49 CONSTANT VC                  \ ovf clear
+48 CONSTANT VS                  \ ovf set
+4B CONSTANT PL                  \ plus
+4A CONSTANT MI                  \ minus
+4D CONSTANT GE                  \ x >= y  (signed)
+4C CONSTANT LT                  \ x < y     ""
+4F CONSTANT GT                  \ x > y     ""
+4E CONSTANT LE                  \ x <= y    ""
+
+\ for error detection, 2=orig, 3=dest
+: IF,     8, 0 8, AHERE 2 ;
+: AHEAD,  NV IF, ;  \ unconditional branch
+: THEN,   2 ?pair  AHERE OVER - ?disp SWAP 1- 8! ;
+: ELSE,   NV IF, 2SWAP THEN, ;
+
+: BEGIN,  AHERE 3 ;
+: UNTIL,  8,  3 ?pair AHERE 1+ - ?disp 8, ;
+: AGAIN,  NV UNTIL, ; \ unconditional branch
+: WHILE,  IF, 2SWAP ;
+: REPEAT, AGAIN, THEN, ;
+
+\ ======== pbForth wrapper ========
+
+: NEXT,    'next () JMP, ;   \ assuming that's the right value
+: CODE     CREATE -2 CELLS ALLOT HERE CELL+ , ;
+: END-CODE ;
+
+\ ======== Cleanup ========
+
+BASE !

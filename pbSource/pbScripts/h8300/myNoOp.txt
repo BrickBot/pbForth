@@ -1,0 +1,22 @@
+\ -----------------------------------------------------------------------------
+\ h8300/myNoOp.txt - simple NoOp instruction in assembler
+\
+\ Requires: h8300/assembler.txt
+\
+\ This routine is just a new version of NoOp for the RCX in assembly language.
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-04-25 - Original
+\ -----------------------------------------------------------------------------
+
+BASE @
+DECIMAL
+
+CODE myNoOp   \ Creates a new assembly language word called myNoOp
+  NEXT,       \ Compiles a JMP to NEXT which must end every assembler word
+END-CODE      \ marks the end of the assembler word
+
+BASE !  
+
+\ -----------------------------------------------------------------------------

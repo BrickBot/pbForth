@@ -1,0 +1,28 @@
+\ -----------------------------------------------------------------------------
+\ h8300/splitWord2.txt - split the word on top of stack into bytes
+\
+\ Requires: h8300/assembler.txt
+\
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-04-25 - Original
+\ -----------------------------------------------------------------------------
+
+BASE @
+HEX
+
+CODE SPLIT-WORD ( u -- lsb msb )
+  0 ## r0    MOV,       \ Clear out a temporary word value
+  r6l  r0l   MOV,       \ Copy the LSB of TOS to LSW of temp word
+  r0         PUSH,      \ Push the LSB as a word on the stack
+  r6h  r6l   MOV,       \ Copy the MSB of TOS to LSB
+  0 ## r6h   MOV,       \ Clear the MSB of TOS
+  NEXT,                 \ Compile jump to NEXT
+END-CODE
+
+: TEST 0 DO I SPLIT-WORD 2DROP LOOP ;
+
+BASE !  
+
+\ -----------------------------------------------------------------------------

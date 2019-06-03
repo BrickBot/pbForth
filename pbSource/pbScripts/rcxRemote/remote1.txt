@@ -1,0 +1,63 @@
+\ -----------------------------------------------------------------------------
+\ remote1.txt - looks for packet headers in the IR data stream
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-07-06 - Original
+\ -----------------------------------------------------------------------------
+\ Advances the headrer state one level for every character match
+\
+\ headerState Event            Action
+\      0      waiting for 55   set headerState to 1 
+\      1      waiting for FF   set headerState to 2
+\      2      waiting for 00   set headerState to 3
+\
+\ Returns 0 if no packet has been found yet, non-0 if a packet is completed
+\ -----------------------------------------------------------------------------
+
+BASE @
+HEX
+
+0 VALUE headerState
+
+: getHeader ( -- f )
+  EKEY?                                       \ Check for IR character
+  IF   EKEY                                   \ If there is one, get it 
+
+    headerState 0 =
+    IF   55 = IF   1 TO headerState
+              ELSE 0 TO headerState
+              THEN
+    ELSE
+
+    headerState 1 =
+    IF   FF = IF   2 TO headerState
+              ELSE 0 TO headerState
+              THEN
+    ELSE
+
+    headerState 2 =
+    IF    0 = IF   3 TO headerState
+              ELSE 0 TO headerState
+              THEN
+              
+    THEN THEN THEN
+    
+  THEN
+   
+  3 headerState = ; 
+  
+DECIMAL
+  
+: TEST
+  500 0 timer_SET  
+  0 TO headerState
+  
+  BEGIN getHeader 0 timer_GET  0= OR
+  UNTIL
+  
+  3 headerState = IF 400 ELSE 100 THEN 10 SWAP SOUND_TONE ;
+
+BASE !
+
+\ -----------------------------------------------------------------------------

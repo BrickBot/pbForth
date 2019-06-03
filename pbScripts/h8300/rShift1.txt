@@ -1,0 +1,42 @@
+\ -----------------------------------------------------------------------------
+\ h8300/rShift.txt - shift word n bits to the right
+\
+\ Requires: h8300/assembler.txt
+\
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel   2002-04-25 - Original
+\ -----------------------------------------------------------------------------
+
+BASE @
+HEX
+
+CODE newRSHIFT ( u1 n -- u2 )
+  r0         POP,       \ Pull u1 into R0 - it's the number we're shifting
+  0F ## r6l  AND,       \ Limit the shifting to 16 bits
+
+  BEGIN,
+    NE                  \ Previous operation sets Z if R6L is 0
+  WHILE,
+    r0h  SHLR,          \ Logical shift MSB right, puts zero in high bit
+    r0l  ROTXR,         \ Rotate right, putting carry in high bit
+    r6l  DEC,           \ Decrement count of bits to shift
+  REPEAT,
+
+  r0    r6   MOV,       \ Copy the result to TOS
+  NEXT,                 \ Compile jump to NEXT
+END-CODE
+
+: TEST0 0 DO I 8    RSHIFT DROP LOOP ;
+: TEST1 0 DO I 8 newRSHIFT DROP LOOP ;
+
+: newSPLIT-WORD ( u -- lsb msb )
+  DUP FF AND SWAP    \  ( -- lsb u   ) Isolate the lsb
+  8 newRSHIFT ;      \  ( -- lsb msb ) Isolate the msb
+
+: TEST2 0 DO I newSPLIT-WORD 2DROP LOOP ;
+
+BASE !  
+
+\ -----------------------------------------------------------------------------

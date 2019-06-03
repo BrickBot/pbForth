@@ -1,0 +1,111 @@
+----------------------------------------------------------------------------
+
+Change notes for archive up to 2002-xx-yy
+
+1. SAVE-SYSTEM was missing a close quote at " All Done!"
+
+   pbScripts/saveSystem/savesys.txt
+
+2. Fix LEAVE so that it terminates the loop correctly. Also rework the
+   names for runtime versions of I J and UNLOOP
+
+   pbForth/control.tcl
+
+3. Fix MARKER so it does not leave junk on the stack
+
+   pbForth/interp.tcl
+
+4. Remove dead code from XMODEM sending code
+
+   pbScripts/saveSystem/xsend.txt
+
+5. Change version number to 2.1.5
+
+   pbForth/interp.tcl
+
+----------------------------------------------------------------------------
+
+Change notes for archive up to 2002-05-25
+
+1. GEN8 was checking the PAD size as HEX 84 instead of DECIMAL 84
+
+   anstest/anstest.txt
+
+2. Added skeleton of On/Off button handler but disabled it for now
+   
+   h8300/rcx/pbforth/h8300-primary-rcx.tcl
+
+3. Task level data and return stacks set at 96 elements each. There is
+   a 6 byte pad at the bottom of each stack, so there are really only
+   93 elements.
+
+   ld/h8300-rcx.ld
+   pbForth/environment.tcl
+
+4. Fixed MARKER to save and restore Head properly. Moved Head next to
+   Latest for clarity
+
+   pbForth/compile.tcl
+   pbForth/interp.tcl
+ 
+5. Change version number to 2.1.4
+
+   pbForth/interp.tcl
+   
+----------------------------------------------------------------------------
+
+Change notes for archive up to 2002-05-03
+
+1. Fix stack error in SOUND_TONE
+
+   h8300/rcx/pbforth/h8300-primary-rcx.tcl
+
+2. Fix bug in receive logic. RDRF was never being set after a character is
+   received with errors
+   
+   h8300/serial/asm/serial-get.asm
+
+3. Change version number to 2.1.3
+
+   pbForth/interp.tcl
+   
+----------------------------------------------------------------------------
+
+Change notes for archive up to 2002-04-28
+
+1. Add h8300 directory to pbScripts to include new assembler
+
+   pbScripts/h8300
+
+----------------------------------------------------------------------------
+
+Change notes for archive up to 2002-04-21
+
+1. Add 'UserIdle and 'UserISR hooks to allow for background processing
+   during KEY and at the 1 msec interrupt service. Fix MARKER to save and
+   restore 'UserIdle and 'UserISR
+   
+   h8300/rcx/pbforth/h8300-primary-rcx.tcl
+   pbforth/interp.tcl
+   
+2. Add ATO4TH and 'ato4th to allow asm code to call Forth
+
+   h8300/rcx/pbforth/h8300-primary-extra.tcl
+
+3. Optimize EXIT by merging in NEXT
+
+   h8300/rcx/pbforth/h8300-primary.tcl
+
+4. Add private stacks for the 1 msec ISR handler
+
+   ld/h8300-rcx.ld
+
+5. Link NoOp into the wordlist
+
+   pbforth/except.tcl
+
+6. Set version number to 2.1.1
+
+   pbforth/interp.tcl
+
+----------------------------------------------------------------------------

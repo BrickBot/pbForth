@@ -1,0 +1,137 @@
+\ -----------------------------------------------------------------------------
+\ xsend.txt - definitions required for XMODEM transfers
+\
+\ This code is entirely due to the efforts of Sergey Udovenko. I have tried
+\ to reformat it and will add comments someday...
+\ -----------------------------------------------------------------------------
+\ Revision History
+\
+\ R. Hempel 2002-07-06 - Eliminate dead code
+\ R. Hempel 2001-11-02 - Updated for use with new pbForth
+\                      - Eliminated wordlist manipulation
+\                        source submitted by Sergey Udovenko
+\ R. Hempel 1999-12-12 - Converted to pbFORTH source format from original
+\                        source submitted by Sergey Udovenko
+\                      - Add RCX-INIT and BUTTON-INIT to x-begin
+\ -----------------------------------------------------------------------------
+
+BASE @ HEX
+
+\ RCX utilities
+
+: RUN-BUTTON? ( -- flag )
+  RCX_BUTTON DUP BUTTON_GET @ 1 AND 1 = ;
+
+: LCD-INT ( n -- )
+  3002 SWAP 3001 LCD_NUMBER LCD_REFRESH ;
+
+\ communication
+
+: rx? ( -- flag )
+  RUN-BUTTON? ABORT" Interrupted" EKEY? ;
+
+: rx@ ( -- c )
+  BEGIN rx? UNTIL EKEY ;
+
+: response? ( c-request -- c-response )
+  0 0 timer_SET 
+  BEGIN 
+    0 timer_GET 0= IF DUP EMIT 200 0 timer_SET THEN 
+    rx?
+  UNTIL DROP EKEY ;
+
+\ XMODEM block
+
+1  CONSTANT <SOH>
+4  CONSTANT <EOT>
+6  CONSTANT <ACK>
+11 CONSTANT <XOFF>
+13 CONSTANT <XON>
+15 CONSTANT <NAK>
+
+80 CONSTANT block.data_size
+
+HERE 100 ALLOT
+  VALUE block
+
+\ block fields
+: block.number   ( -- nr-addr )   block ;
+: block.offset   ( -- off-addr )  block CELL+ ;
+: block.checksum ( -- sum-addr )  block CELL+ CELL+ ;
+: block.data     ( -- data-addr ) block 3 CELLS + ; 
+
+: block.init ( -- )
+  block 3 CELLS block.data_size + 0 FILL ;
+
+: block.next ( -- )
+  block.number @ block.init 1+ DUP block.number !
+  LCD-INT ;  \ block nr on LCD
+
+: block.remain ( -- n )
+  block.data_size block.offset @ - ;
+
+: block.byte! ( b -- )
+  DUP block.data block.offset @ + C!
+  FF AND block.checksum +! 
+  1 block.offset +! ;
+
+: block.tx_header ( -- ; header: <SAH> <blk-nr> <FF - blk-nr> )
+  <SOH> EMIT 
+  block.number @ 1+ DUP EMIT 
+  FF SWAP - EMIT ;
+
+: block.tx_checksum ( -- )
+  block.checksum @ FF AND EMIT ;
+
+: block.tx_data ( off -- )
+  DUP block.data + block.data_size ROT - 0 DO 
+     DUP C@ EMIT CHAR+
+  LOOP DROP ;
+
+: block.sent? ( -- )
+  BEGIN rx@ <ACK> = INVERT WHILE
+    block.tx_header 0 block.tx_data block.tx_checksum 
+  REPEAT 
+  block.next ;
+
+: block.put_byte ( b -- )
+  block.offset @ 0= IF 
+    block.tx_header 
+  THEN 
+  DUP block.byte! EMIT
+  block.remain 0= IF 
+    block.tx_checksum block.sent? 
+  THEN ;
+
+: block.flush ( -- )
+  block.offset @ 0 > IF
+    block.remain 0 > IF
+       block.offset @ block.tx_data 
+    THEN 
+     block.tx_checksum block.sent?
+  THEN ;
+
+\ XMODEM protocol
+
+: x-transmit-byte ( b -- )
+  block.put_byte ;
+
+: x-transmit ( addr count -- )
+   0 DO
+     DUP C@ block.put_byte CHAR+
+   LOOP DROP ;
+
+: x-begin ( -- ) 
+  block.init
+  BEGIN rx@ <NAK> = UNTIL 
+  301C LCD_SHOW LCD_REFRESH ;  \ tx indicator
+
+: x-end ( -- )
+  block.flush
+  BEGIN <EOT> response? <ACK> = UNTIL 
+  301C LCD_HIDE LCD_REFRESH ;  \ tx indicator
+
+: X-SEND ( addr count -- )
+  x-begin x-transmit x-end ;
+
+BASE !

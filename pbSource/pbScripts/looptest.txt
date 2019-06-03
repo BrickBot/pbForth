@@ -1,0 +1,32 @@
+: DUMP 0 DO
+  DUP @ U. CELL+ LOOP ;
+
+\ : TEST 0 SWAP 0 DO
+\   I I 2DUP =
+\   IF   2DROP
+\   ELSE ." BAD I" U. SPACE U. 
+\   THEN 1+
+\   LOOP ;
+\ 
+\ : TEST2 0 SWAP 0 DO
+\   DUP U. CELL+
+\   LOOP ;
+\ 
+\ 
+\ HEX
+\ 
+\ : RCX-TEST RCX_INIT
+\    TEST
+\    FF90 C@
+\    F7 AND
+\    FF90 C!
+\ ;
+\ 
+\ : RCX-TEST2 RCX_INIT
+\    TEST2
+\    FF90 C@
+\    F7 AND
+\    FF90 C!
+\ ;
+
+
